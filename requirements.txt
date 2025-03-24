@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+langchain
+openai
+faiss-cpu
+sentence-transformers
+pydantic
+python-docx
+pypdf
+pandas
+beautifulsoup4
+unstructured
+gunicorn
+python-multipart
