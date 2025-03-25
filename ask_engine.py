@@ -1,11 +1,11 @@
 import os
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chat_models import ChatOpenAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-# Caminhos
+# Caminhos e modelos
 INDEX_PATH = "data/faiss_index"
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
@@ -29,7 +29,6 @@ QA_CHAIN_PROMPT = PromptTemplate(
     template=template,
 )
 
-# Cria a cadeia de perguntas e respostas
 qa_chain = RetrievalQA.from_chain_type(
     llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0),
     retriever=retriever,
@@ -37,7 +36,6 @@ qa_chain = RetrievalQA.from_chain_type(
     chain_type="stuff",
     chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
 )
-
 
 def get_answer(question: str):
     result = qa_chain({"query": question})

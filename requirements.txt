@@ -1,6 +1,7 @@
 langchain
 langchain-community
 langchain-openai
+langchain-huggingface
 faiss-cpu
 fastapi
 uvicorn
@@ -12,3 +13,4 @@ python-docx
 beautifulsoup4
 unstructured
 pandas
+
