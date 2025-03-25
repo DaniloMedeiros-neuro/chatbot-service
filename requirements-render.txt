@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+gunicorn
+pydantic
+openai
+faiss-cpu
+python-docx
+pypdf
+langchain==0.1.14
+langchain-core
+langchain-community
+langchain-openai
+langchain-huggingface
+sentence-transformers
