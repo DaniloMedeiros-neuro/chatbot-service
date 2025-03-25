@@ -1,50 +1,49 @@
 import os
+from typing import Tuple, List
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
+EMBEDDING_MODEL_NAME = "sentence-transformers/paraphrase-MiniLM-L3-v2"
 INDEX_PATH = "data/faiss_index"
 INDEX_FILE = os.path.join(INDEX_PATH, "index.faiss")
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-# Inicializa embeddings
-embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
 
-# Só carrega FAISS se o índice existir
-if os.path.exists(INDEX_FILE):
+def carregar_qa_chain():
+    if not os.path.exists(INDEX_FILE):
+        return None
+
+    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
     db = FAISS.load_local(INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
-    template = """
-    Você é um assistente útil. Responda com base nos documentos abaixo:
-
-    {context}
-
-    Pergunta: {question}
-    Resposta:
-    """
-
-    QA_CHAIN_PROMPT = PromptTemplate(
+    prompt = PromptTemplate(
         input_variables=["context", "question"],
-        template=template,
+        template="""
+Você é um assistente útil. Responda com base nos documentos abaixo:
+
+{context}
+
+Pergunta: {question}
+Resposta:
+""",
     )
 
-    qa_chain = RetrievalQA.from_chain_type(
+    return RetrievalQA.from_chain_type(
         llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0),
         retriever=retriever,
         return_source_documents=True,
         chain_type="stuff",
-        chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
+        chain_type_kwargs={"prompt": prompt}
     )
-else:
-    db = None
-    qa_chain = None
 
-def get_answer(question: str):
+
+def get_answer(question: str) -> Tuple[str, List[str]]:
+    qa_chain = carregar_qa_chain()
     if not qa_chain:
-        return "Índice FAISS ainda não criado. Use /index primeiro.", []
+        return "❌ O índice ainda não foi criado. Use o endpoint /index antes de perguntar.", []
 
     result = qa_chain({"query": question})
     answer = result["result"]
