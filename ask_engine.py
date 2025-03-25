@@ -5,39 +5,47 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
-# Caminhos e modelos
 INDEX_PATH = "data/faiss_index"
+INDEX_FILE = os.path.join(INDEX_PATH, "index.faiss")
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-# Inicializa os embeddings e carrega FAISS
+# Inicializa embeddings
 embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
-db = FAISS.load_local(INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
 
-retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+# Só carrega FAISS se o índice existir
+if os.path.exists(INDEX_FILE):
+    db = FAISS.load_local(INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
+    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
-# Prompt customizado (opcional)
-template = """
-Você é um assistente útil. Responda com base nos documentos abaixo:
+    template = """
+    Você é um assistente útil. Responda com base nos documentos abaixo:
 
-{context}
+    {context}
 
-Pergunta: {question}
-Resposta:
-"""
-QA_CHAIN_PROMPT = PromptTemplate(
-    input_variables=["context", "question"],
-    template=template,
-)
+    Pergunta: {question}
+    Resposta:
+    """
 
-qa_chain = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0),
-    retriever=retriever,
-    return_source_documents=True,
-    chain_type="stuff",
-    chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
-)
+    QA_CHAIN_PROMPT = PromptTemplate(
+        input_variables=["context", "question"],
+        template=template,
+    )
+
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0),
+        retriever=retriever,
+        return_source_documents=True,
+        chain_type="stuff",
+        chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
+    )
+else:
+    db = None
+    qa_chain = None
 
 def get_answer(question: str):
+    if not qa_chain:
+        return "Índice FAISS ainda não criado. Use /index primeiro.", []
+
     result = qa_chain({"query": question})
     answer = result["result"]
     sources = []
@@ -49,4 +57,4 @@ def get_answer(question: str):
         elif "filename" in metadata:
             sources.append(metadata["filename"])
 
-    return answer, list(set(sources))  # Remove duplicatas
+    return answer, list(set(sources))
