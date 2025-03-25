@@ -1,6 +1,6 @@
 import os
 from typing import Tuple, List
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
@@ -11,14 +11,17 @@ INDEX_PATH = "data/faiss_index"
 INDEX_FILE = os.path.join(INDEX_PATH, "index.faiss")
 
 
-def carregar_qa_chain():
+def get_answer(question: str) -> Tuple[str, List[str]]:
+    # Verifica se o índice existe
     if not os.path.exists(INDEX_FILE):
-        return None
+        return "❌ O índice ainda não foi criado. Use o endpoint /index antes de perguntar.", []
 
+    # Carrega embeddings e FAISS sob demanda
     embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
     db = FAISS.load_local(INDEX_PATH, embeddings, allow_dangerous_deserialization=True)
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
+    # Prompt customizado
     prompt = PromptTemplate(
         input_variables=["context", "question"],
         template="""
@@ -31,7 +34,8 @@ Resposta:
 """,
     )
 
-    return RetrievalQA.from_chain_type(
+    # Cadeia de resposta com OpenAI
+    qa_chain = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0),
         retriever=retriever,
         return_source_documents=True,
@@ -39,16 +43,11 @@ Resposta:
         chain_type_kwargs={"prompt": prompt}
     )
 
-
-def get_answer(question: str) -> Tuple[str, List[str]]:
-    qa_chain = carregar_qa_chain()
-    if not qa_chain:
-        return "❌ O índice ainda não foi criado. Use o endpoint /index antes de perguntar.", []
-
+    # Executa a pergunta
     result = qa_chain({"query": question})
     answer = result["result"]
-    sources = []
 
+    sources = []
     for doc in result["source_documents"]:
         metadata = doc.metadata
         if "source" in metadata:
