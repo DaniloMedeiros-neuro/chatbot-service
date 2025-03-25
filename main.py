@@ -37,13 +37,18 @@ async def ask_question(q: Question):
 @app.post("/index")
 async def index_documents(request: IndexRequest):
     try:
-        build_faiss_index([doc.dict() for doc in request.documents])
+        print("🔍 Recebendo documentos para indexação")
+        docs = [doc.dict() for doc in request.documents]
+        print(f"📄 Documentos recebidos: {len(docs)}")
+        build_faiss_index(docs)
         return {
             "success": True,
             "message": f"{len(request.documents)} documentos indexados com sucesso."
         }
     except Exception as e:
+        print(f"❌ Erro ao indexar: {e}")
         return {
             "success": False,
             "error": str(e)
         }
+
